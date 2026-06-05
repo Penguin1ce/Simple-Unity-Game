@@ -21,6 +21,7 @@ public class PlayerHealth : MonoBehaviour
     private bool isDead = false;
     private Animator animator;
     private MonoBehaviour playerInputComponent;
+    private CharacterController characterController;
 
     private void Awake()
     {
@@ -29,6 +30,8 @@ public class PlayerHealth : MonoBehaviour
 
     private void Start()
     {
+        // 获取CharacterController组件
+        characterController = GetComponent<CharacterController>();
         // 获取Animator组件 - 优先本物体，然后是子物体和父物体
         animator = GetComponent<Animator>();
         if (animator == null)
@@ -181,7 +184,21 @@ public class PlayerHealth : MonoBehaviour
         // 打印日志
         Debug.Log("玩家死亡");
 
-        // 触发死亡动画
+        // 步骤1：禁用CharacterController组件
+        if (characterController != null)
+        {
+            characterController.enabled = false;
+            Debug.Log("PlayerHealth: CharacterController已禁用");
+        }
+
+        // 禁用ThirdPersonController脚本
+        if (thirdPersonController != null)
+        {
+            thirdPersonController.enabled = false;
+            Debug.Log($"PlayerHealth: ThirdPersonController已禁用");
+        }
+
+        // 步骤2：播放死亡动画（Animator触发"TrigDead"）
         if (animator != null)
         {
             Debug.Log("PlayerHealth: 触发 TrigDead 动画触发器");
@@ -194,5 +211,31 @@ public class PlayerHealth : MonoBehaviour
 
         // 防滑步：禁用玩家控制
         DisablePlayerControl();
+
+        // 步骤3：1.5秒内缩小角色并输出游戏结束
+        StartCoroutine(ShrinkAndGameOver());
+    }
+
+    /// <summary>
+    /// 1.5秒内将角色Scale从1缩小到0，然后输出游戏结束
+    /// </summary>
+    private System.Collections.IEnumerator ShrinkAndGameOver()
+    {
+        float shrinkDuration = 1.5f;
+        float elapsedTime = 0f;
+        Vector3 startScale = transform.localScale;
+        Vector3 targetScale = Vector3.zero;
+
+        while (elapsedTime < shrinkDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsedTime / shrinkDuration);
+            transform.localScale = Vector3.Lerp(startScale, targetScale, progress);
+            yield return null;
+        }
+
+        // 确保Scale最终为0
+        transform.localScale = Vector3.zero;
+        Debug.Log("游戏结束");
     }
 }

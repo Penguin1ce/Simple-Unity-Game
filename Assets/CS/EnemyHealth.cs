@@ -30,6 +30,14 @@ public class EnemyHealth : MonoBehaviour
         {
             Die();
         }
+        else
+        {
+            // 触发受击动画
+            if (animator != null)
+            {
+                animator.SetTrigger("Hit");
+            }
+        }
     }
 
     /// <summary>
@@ -43,13 +51,51 @@ public class EnemyHealth : MonoBehaviour
         // 触发死亡动画
         if (animator != null)
         {
-            animator.SetTrigger("Die");
+            animator.SetTrigger("Death");
+        }
+
+        // 禁用NavMeshAgent和EnemyAI组件
+        var navMeshAgent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+        if (navMeshAgent != null)
+        {
+            navMeshAgent.enabled = false;
+        }
+
+        var enemyAI = GetComponent<EnemyAI>();
+        if (enemyAI != null)
+        {
+            enemyAI.enabled = false;
         }
 
         // 打印日志
         Debug.Log("敌人死亡");
 
-        // 2秒后销毁物体
-        Destroy(gameObject, 2f);
+        // 1.5秒内缩小并销毁物体
+        StartCoroutine(ShrinkAndDestroy());
+    }
+
+    /// <summary>
+    /// 1.5秒内缩小并销毁物体
+    /// </summary>
+    private System.Collections.IEnumerator ShrinkAndDestroy()
+    {
+        float shrinkDuration = 1.5f;
+        float elapsedTime = 0f;
+        Vector3 startScale = transform.localScale;
+        Vector3 targetScale = Vector3.zero;
+
+        while (elapsedTime < shrinkDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsedTime / shrinkDuration);
+            transform.localScale = Vector3.Lerp(startScale, targetScale, progress);
+            yield return null;
+        }
+
+        // 确保Scale最终为0
+        transform.localScale = Vector3.zero;
+
+        // 销毁物体
+        Destroy(gameObject);
     }
 }

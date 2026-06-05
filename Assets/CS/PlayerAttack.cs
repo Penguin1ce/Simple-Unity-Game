@@ -78,13 +78,38 @@ public class PlayerAttack : MonoBehaviour
             // 检查是否是敌人
             if (hitCollider.CompareTag("Enemy"))
             {
-                // 获取敌人血量组件并造成伤害
+                // 获取敌人血量组件
                 EnemyHealth enemyHealth = hitCollider.GetComponent<EnemyHealth>();
                 if (enemyHealth != null)
                 {
-                    enemyHealth.TakeDamage(damage);
+                    // 延迟0.5秒后检查是否仍在攻击范围内再造成伤害
+                    StartCoroutine(DelayDealDamage(enemyHealth, hitCollider.transform));
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// 延迟造成伤害的协程
+    /// </summary>
+    private System.Collections.IEnumerator DelayDealDamage(EnemyHealth enemyHealth, Transform enemyTransform)
+    {
+        yield return new WaitForSeconds(0.5f);
+
+        // 检查敌人是否已销毁
+        if (enemyHealth == null || enemyTransform == null)
+        {
+            yield break;
+        }
+
+        // 计算当前的攻击检测点
+        Vector3 attackCenter = transform.position + transform.forward * attackDistance;
+        float distanceToEnemy = Vector3.Distance(attackCenter, enemyTransform.position);
+
+        // 检查敌人是否仍在攻击范围内
+        if (distanceToEnemy <= attackRange)
+        {
+            enemyHealth.TakeDamage(damage);
         }
     }
 

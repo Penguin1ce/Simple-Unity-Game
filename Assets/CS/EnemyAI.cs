@@ -10,12 +10,15 @@ public class EnemyAI : MonoBehaviour
     [Header("Attack Settings")]
     public float attackCooldown = 1.5f;
     public int attackDamage = 10;
+    [Tooltip("攻击前方角度范围（度），180度为半个球体，90度为正前方扇形")]
+    public float attackAngle = 90f;
 
     [Header("References")]
     public NavMeshAgent agent;
     public Transform player;
 
     private PlayerHealth playerHealth;
+    public Animator animator;
     private float lastAttackTime;
     private bool isDead = false;
 
@@ -81,8 +84,17 @@ public class EnemyAI : MonoBehaviour
         else
         {
             // 继续追击
-            agent.isStopped = false;
-            agent.SetDestination(player.position);
+            if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
+            {
+                agent.isStopped = false;
+                agent.SetDestination(player.position);
+            }
+
+            // 触发行走动画
+            if (animator != null)
+            {
+                animator.SetFloat("Speed", 1f);
+            }
         }
     }
 
@@ -91,7 +103,16 @@ public class EnemyAI : MonoBehaviour
     /// </summary>
     private void StopChase()
     {
-        agent.isStopped = true;
+        if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+        }
+
+        // 停止行走动画
+        if (animator != null)
+        {
+            animator.SetFloat("Speed", 0f);
+        }
     }
 
     /// <summary>
@@ -107,9 +128,44 @@ public class EnemyAI : MonoBehaviour
 
         lastAttackTime = Time.time;
 
-        // 对玩家造成伤害
-        if (playerHealth != null)
+        // 触发攻击动画
+        if (animator != null)
         {
+            animator.SetTrigger("Attack");
+        }
+
+        // 延迟0.5秒后对玩家造成伤害，与动画挥击动作同步
+        StartCoroutine(DelayDealDamage());
+    }
+
+    /// <summary>
+    /// 延迟造成伤害的协程
+    /// </summary>
+    private System.Collections.IEnumerator DelayDealDamage()
+    {
+        yield return new WaitForSeconds(1.5f);
+
+        // 检查玩家是否仍在攻击范围内
+        if (player == null || playerHealth == null)
+        {
+            yield break;
+        }
+
+        float distanceToPlayer = Vector3.Distance(transform.position, player.position);
+
+        // 检查距离
+        if (distanceToPlayer > attackRange)
+        {
+            yield break;
+        }
+
+        // 检查玩家是否在前方扇形范围内
+        Vector3 directionToPlayer = (player.position - transform.position).normalized;
+        float angleToPlayer = Vector3.Angle(transform.forward, directionToPlayer);
+
+        if (angleToPlayer <= attackAngle / 2f)
+        {
+            // 玩家在前方扇形范围内，造成伤害
             playerHealth.TakeDamage(attackDamage);
         }
     }
@@ -128,7 +184,10 @@ public class EnemyAI : MonoBehaviour
     public void Die()
     {
         isDead = true;
-        agent.isStopped = true;
+        if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+        }
     }
 
     /// <summary>

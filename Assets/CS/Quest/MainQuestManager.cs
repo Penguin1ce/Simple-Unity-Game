@@ -1,7 +1,7 @@
-    using UnityEngine;
 using System;
+using UnityEngine;
 
-public class MainQuestManager : MonoBehaviour
+public class MainQuestManager : MonoBehaviour, IMainQuestService
 {
     public static MainQuestManager Instance { get; private set; }
 
@@ -14,7 +14,7 @@ public class MainQuestManager : MonoBehaviour
 
     private int questStage = NotAcceptedStage;
     public int QuestStage => questStage;
-    public bool IsQuestCompleted => questStage == CompletedStage;
+    public bool IsQuestCompleted => questStage >= CompletedStage;
 
     // 事件：当任务阶段改变时通知 UI
     public event Action<int, string> QuestStageChanged;
@@ -32,6 +32,11 @@ public class MainQuestManager : MonoBehaviour
 
     public void AcceptMainQuest()
     {
+        if (questStage != NotAcceptedStage)
+        {
+            return;
+        }
+
         SetQuestStage(KillSlimeStage);
     }
 
@@ -54,7 +59,15 @@ public class MainQuestManager : MonoBehaviour
     // 新增：调试用，直接设置阶段
     public void SetQuestStageForDebug(int stage)
     {
-        SetQuestStage(stage);
+        SetQuestStage(Mathf.Clamp(stage, NotAcceptedStage, CompletedStage));
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
     }
 
     private void SetQuestStage(int newStage)
@@ -78,6 +91,14 @@ public class MainQuestManager : MonoBehaviour
 
     public string GetNpcDialogueText()
     {
-        return "勇士，村里的史莱姆最近太猖狂了，你能帮帮我吗？";
+        switch (questStage)
+        {
+            case NotAcceptedStage: return "勇士，村里的怪物越来越多了，愿意帮忙吗？";
+            case KillSlimeStage: return "先去击败史莱姆，回来后我再告诉你下一步。";
+            case KillEliteStage: return "做得好，接下来请击败精英怪。";
+            case KillBossStage: return "最后的威胁是 Boss，击败它就能结束这场危机。";
+            case CompletedStage: return "谢谢你，主线任务已经完成了。";
+            default: return "我还不清楚现在的任务进度。";
+        }
     }
 }

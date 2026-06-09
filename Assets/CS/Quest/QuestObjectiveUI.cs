@@ -4,65 +4,48 @@ using TMPro;
 public class QuestObjectiveUI : MonoBehaviour
 {
     public TMP_Text questText;
-
+    
     // 新增：把完成提示面板拖到这里
     public GameObject completionPanel;
 
-    private MainQuestManager boundQuestManager;
-
-    void OnEnable()
-    {
-        BindQuestManager();
-    }
-
     void Start()
-    {
-        BindQuestManager();
-    }
-
-    void UpdateText(int stage, string message)
-    {
-        if (questText != null)
-        {
-            questText.text = "当前目标: " + message;
-        }
-
-        // 新增：检测任务是否完成
-        if (completionPanel != null)
-        {
-            completionPanel.SetActive(stage == MainQuestManager.CompletedStage);
-        }
-    }
-
-    void OnDisable()
-    {
-        if (boundQuestManager != null)
-        {
-            boundQuestManager.QuestStageChanged -= UpdateText;
-            boundQuestManager = null;
-        }
-    }
-
-    private void BindQuestManager()
     {
         if (questText == null)
         {
             questText = GetComponent<TMP_Text>();
         }
 
-        MainQuestManager questManager = MainQuestManager.Instance;
-        if (questManager == null || boundQuestManager == questManager)
+        if (MainQuestManager.Instance != null)
         {
-            return;
+            MainQuestManager.Instance.QuestStageChanged += UpdateText;
+            UpdateText(MainQuestManager.Instance.QuestStage, "");
+        }
+    }
+
+    void UpdateText(int stage, string message)
+    {
+        if (questText != null)
+        {
+            questText.text = "当前目标: " + MainQuestManager.Instance.GetCurrentQuestText();
         }
 
-        if (boundQuestManager != null)
+        // 新增：检测任务是否完成
+        if (completionPanel != null)
         {
-            boundQuestManager.QuestStageChanged -= UpdateText;
+            if (stage == MainQuestManager.CompletedStage)
+            {
+                completionPanel.SetActive(true);
+            }
+            else
+            {
+                completionPanel.SetActive(false);
+            }
         }
+    }
 
-        boundQuestManager = questManager;
-        boundQuestManager.QuestStageChanged += UpdateText;
-        UpdateText(boundQuestManager.QuestStage, boundQuestManager.GetCurrentQuestText());
+    void OnDestroy()
+    {
+        if (MainQuestManager.Instance != null)
+            MainQuestManager.Instance.QuestStageChanged -= UpdateText;
     }
 }

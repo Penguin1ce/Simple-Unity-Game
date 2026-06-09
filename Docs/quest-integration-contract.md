@@ -1,27 +1,18 @@
 # 主线任务系统协作接口清单
 
-本文档用于地图、战斗、UI、背包同学交付资源前对齐接口。当前项目使用 `Assets/CS/Quest/` 下的轻量任务系统实现；本次先不做正式场景接线，等对应资源完成后再按本文档接入。
+本文档用于地图、战斗、UI、背包同学交付资源前对齐接口。当前先不做正式场景接线；等对应资源完成后，任务系统按本文档接入。
 
 ## 当前任务系统边界
 
-任务系统当前实现位于 `Assets/CS/Quest/`，核心目标是跑通“接主线 -> 杀 Slime -> 杀 Elite -> 杀 Boss -> 完成”的最小闭环：
+任务系统已有代码位于 `Assets/CS/Quest/`：
 
 - `MainQuestManager`：主线任务状态管理器，会在场景加载后自动创建单例。
 - `IMainQuestService`：任务系统对外接口。
 - `EnemyType`：任务击杀目标类型，目前为 `Slime`、`Elite`、`Boss`。
 - `QuestEnemyMarker`：挂在敌人对象上，用于标记该敌人属于哪种任务目标。
-- `QuestObjectiveUI`：订阅 `QuestStageChanged` 并刷新任务文本。
-- `DialogueUI`：轻量对话 UI，可读取任务 NPC 文案。
-- `QuestNpcInteraction`：本次约定的轻量 NPC 交互脚本，挂在任务 NPC 上，玩家靠近后按交互键调用 `AcceptMainQuest()`。
-
-ARPG-Demo 只作为接口参考，参考点限于：
-
-- `IMainQuestService` 作为任务系统对外服务。
-- NPC 交互入口调用 `AcceptMainQuest()`。
-- 敌人死亡入口调用 `OnEnemyKilled(EnemyType)`。
-- UI 订阅任务阶段变化并刷新显示。
-
-不要把 ARPG-Demo 的完整架构搬进当前项目；本文档不声称引入 VContainer、存档、EventCenter、QuestPool 或对话任务节点，也不使用 ARPG-Demo 的 `OnQuestStageChanged` 事件名。当前项目事件名统一为 `QuestStageChanged`。
+- `QuestNpcInteraction`：挂在任务 NPC 上，玩家靠近后按交互键接任务。
+- `QuestObjectiveUI`：订阅任务状态变化并刷新任务文本。
+- `QuestDebugTester`：临时调试入口，可手动推进任务阶段。
 
 主线阶段约定：
 
@@ -63,7 +54,7 @@ IMainQuestService questService = MainQuestManager.Instance;
 - 接任务只调用 `AcceptMainQuest()`。
 - 敌人死亡只调用 `OnEnemyKilled(enemyType)`。
 - UI 文案只读 `GetCurrentQuestText()` 或订阅 `QuestStageChanged`。
-- 其他模块不要直接改 `QuestStage` 或调用 `SetQuestStageForDebug()`；该方法只给任务系统内部调试使用，目前没有独立的 `QuestDebugTester` 脚本。
+- 其他模块不要调用 `SetQuestStageForDebug()`，该方法只给调试使用。
 
 ## 地图同学接口
 
@@ -82,10 +73,9 @@ IMainQuestService questService = MainQuestManager.Instance;
 
 任务系统接入方式：
 
-- 在任务 NPC 对象上挂本次新增的轻量 `QuestNpcInteraction`。
+- 在任务 NPC 对象上挂 `QuestNpcInteraction`。
 - 在对应敌人实例或 prefab 上挂 `QuestEnemyMarker`。
 - 如果地图使用动态刷怪，刷怪器需要在实例化敌人后设置对应 `EnemyType`，或直接使用已配置好的 prefab。
-- 地图同学只需要交付点位、碰撞、导航和对象命名；本次不制作正式地图资源，也不要求地图同学重写任务脚本。
 
 验收项：
 
@@ -98,7 +88,7 @@ IMainQuestService questService = MainQuestManager.Instance;
 
 战斗侧需要在敌人死亡时把击杀类型通知任务系统。
 
-当前任务系统已在 `EnemyHealth.Die()` 中通过 `NotifyQuestEnemyKilled()` 读取同对象上的 `QuestEnemyMarker`：
+当前任务系统已在 `EnemyHealth.Die()` 中读取同对象上的 `QuestEnemyMarker`：
 
 ```csharp
 QuestEnemyMarker marker = GetComponent<QuestEnemyMarker>();
@@ -127,7 +117,6 @@ MainQuestManager.Instance?.OnEnemyKilled(enemyType);
 
 - 提供 `OnEnemyDied(EnemyType enemyType)` 事件，让任务系统订阅，后续减少任务逻辑对 `EnemyHealth` 的直接依赖。
 - 如果敌人 prefab 由战斗同学维护，建议在 prefab 上直接配置 `QuestEnemyMarker`。
-- 本次不重做战斗 AI，不替换敌人资源，只保留任务击杀回调边界。
 
 验收项：
 
@@ -152,16 +141,15 @@ string text = questService.GetCurrentQuestText();
 
 | UI 元素 | 要求 |
 | --- | --- |
-| 任务目标文本 | 当前 `QuestObjectiveUI` 使用 TextMeshPro `TMP_Text`；如正式 UI 使用普通 `Text`，UI 侧可提供适配 |
+| 任务目标文本 | 支持普通 `Text` 或 TextMeshPro `TMP_Text` |
 | NPC 对话显示 | 可先读取 `GetNpcDialogueText()`，后续可替换为正式对话系统 |
 | 任务完成提示 | 阶段进入 `CompletedStage` 后显示完成反馈 |
-| 调试按钮 | 可选，仅开发期保留；不要依赖不存在的 `QuestDebugTester` |
+| 调试按钮 | 可选，仅开发期保留，调用 `QuestDebugTester` |
 
 任务 UI 接入方式：
 
-- 最小接法：在任务文本对象上挂 `QuestObjectiveUI`，绑定 `questText`。
+- 最小接法：在任务文本对象上挂 `QuestObjectiveUI`，绑定 `questText` 或 `questTmpText`。
 - 正式接法：UI 管理器订阅 `IMainQuestService.QuestStageChanged`，自行控制面板、动效和提示。
-- 事件名使用当前项目的 `QuestStageChanged`，不要写成 ARPG-Demo 的 `OnQuestStageChanged`。
 
 UI 文案来源：
 
@@ -179,7 +167,7 @@ UI 文案来源：
 
 ## 背包同学接口
 
-当前任务系统还没有正式奖励发放逻辑。背包侧先预留奖励接口，等背包系统交付后再接入任务完成奖励；本次不做背包奖励。
+当前任务系统还没有正式奖励发放逻辑。背包侧先预留奖励接口，等背包系统交付后接入任务完成奖励。
 
 建议背包侧提供：
 
@@ -214,7 +202,6 @@ public interface IInventoryService
 - 不把背包代码写进 `MainQuestManager` 主逻辑。
 - 新增一个奖励适配器，例如 `QuestRewardAdapter`，订阅 `QuestStageChanged`。
 - 当阶段变为 `CompletedStage` 时，调用背包接口发奖励。
-- 奖励逻辑是后续接入项，不属于本次轻量任务系统实现范围。
 
 验收项：
 
@@ -250,7 +237,7 @@ public interface IInventoryService
 3. 接敌人 prefab 的 `QuestEnemyMarker`。
 4. 接任务 UI 文本刷新。
 5. 跑通主线击杀流程。
-6. 等背包系统交付后再接背包奖励。
+6. 接背包奖励。
 7. 做最终验收：接任务 -> 杀 Slime -> 杀 Elite -> 杀 Boss -> 完成任务 -> 发奖励。
 
 ## 当前暂缓项
@@ -260,6 +247,4 @@ public interface IInventoryService
 - 不改正式地图场景摆放。
 - 不替换敌人/NPC/UI 正式资源。
 - 不新增背包奖励逻辑。
-- 不重做战斗 AI。
-- 不制作地图和怪物资源。
 - 不把临时调试按钮当正式 UI。

@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 395fb5014c5137344ae7264068c82880, type: 3}
+  m_Name: ironsworddata
+  m_EditorClassIdentifier: 
+  itemId: weapon_iron_blade
+  itemName: 
+  description: 
+  icon: {fileID: 0}
+  maxStack: 1
+  itemCategory: 0
+  attackPower: 5
+  weaponPrefab: {fileID: 310932139610469904, guid: 7c81eea4ad9988448a23b1aef582729d,
+    type: 3}
+  potionEffectType: 0
+  effectValue: 0
+  questStage: 0

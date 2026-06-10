@@ -18,7 +18,9 @@ public class CurrencyManager : MonoBehaviour, ICurrencyService
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AutoCreate()
     {
-        if (_instance != null) return;
+        // 如果场景里已经有了（比如挂在玩家身上），就不自动创建
+        if (FindObjectOfType<CurrencyManager>() != null) return;
+
         GameObject go = new GameObject("CurrencyManager");
         _instance = go.AddComponent<CurrencyManager>();
         DontDestroyOnLoad(go);

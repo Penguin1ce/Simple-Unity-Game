@@ -10,10 +10,12 @@ public class EnemyHealth : MonoBehaviour
     public Animator animator;
 
     private bool isDead = false;
+    private EnemyAI enemyAI;
 
     private void Awake()
     {
         currentHealth = maxHealth;
+        enemyAI = GetComponent<EnemyAI>();
     }
 
     /// <summary>
@@ -32,11 +34,13 @@ public class EnemyHealth : MonoBehaviour
         }
         else
         {
-            // 触发受击动画
+            // 受击硬直：无法攻击、取消进行中的攻击
+            if (enemyAI != null)
+                enemyAI.Stun();
+
+            // 受击动画
             if (animator != null)
-            {
                 animator.SetTrigger("Hit");
-            }
         }
     }
 

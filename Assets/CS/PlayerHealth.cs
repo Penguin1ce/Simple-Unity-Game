@@ -10,18 +10,27 @@ public class PlayerHealth : MonoBehaviour
     [Tooltip("受击动画时长（秒），在此时间内玩家无法操作")]
     public float hitStunDuration = 0.5f;
 
+    [Header("Movement Lock")]
+    [Tooltip("拖入玩家的移动控制脚本，受击时自动禁用")]
+    public MonoBehaviour movementController;
+
     [Header("References")]
     public MonoBehaviour thirdPersonController;
 
     /// <summary>
-    /// 是否死亡，供其他脚本判断
+    /// 是否死亡
     /// </summary>
     public bool IsDead => isDead;
 
+    /// <summary>
+    /// 是否正在受击硬直中
+    /// </summary>
+    public bool IsInHitStun { get; private set; }
+
     private bool isDead = false;
     private Animator animator;
-    private MonoBehaviour playerInputComponent;
     private CharacterController characterController;
+    private PlayerAttack playerAttack;
 
     private void Awake()
     {
@@ -30,60 +39,26 @@ public class PlayerHealth : MonoBehaviour
 
     private void Start()
     {
-        // 获取CharacterController组件
         characterController = GetComponent<CharacterController>();
-        // 获取Animator组件 - 优先本物体，然后是子物体和父物体
+
         animator = GetComponent<Animator>();
+        if (animator == null) animator = GetComponentInChildren<Animator>();
+        if (animator == null) animator = GetComponentInParent<Animator>();
         if (animator == null)
-        {
-            animator = GetComponentInChildren<Animator>();
-        }
-        if (animator == null)
-        {
-            animator = GetComponentInParent<Animator>();
-        }
-
-        if (animator == null)
-        {
             Debug.LogError("PlayerHealth: Animator component not found!", this);
-        }
         else
-        {
             Debug.Log($"PlayerHealth: Animator found on {animator.gameObject.name}", this);
-        }
 
-        // 获取玩家输入控制组件
-        playerInputComponent = GetComponent<UnityEngine.InputSystem.PlayerInput>();
+        playerAttack = GetComponent<PlayerAttack>();
 
-        // 如果PlayerInput没找到，尝试获取StarterAssetsInputs
-        if (playerInputComponent == null)
+        // 自动查找移动控制器
+        if (movementController == null)
         {
-            var inputs = GetComponent<StarterAssets.StarterAssetsInputs>();
-            if (inputs != null)
-            {
-                playerInputComponent = inputs;
-            }
-        }
-
-        // 如果都没找到，尝试查找ThirdPersonController
-        if (playerInputComponent == null && thirdPersonController == null)
-        {
-            var components = GetComponents<MonoBehaviour>();
-            foreach (var comp in components)
-            {
-                var typeName = comp.GetType().Name;
-                if (typeName.Contains("ThirdPersonController"))
-                {
-                    playerInputComponent = comp;
-                    break;
-                }
-            }
-        }
-
-        // 使用外部引用作为备选
-        if (playerInputComponent == null && thirdPersonController != null)
-        {
-            playerInputComponent = thirdPersonController;
+            movementController = GetComponent<UnityEngine.InputSystem.PlayerInput>();
+            if (movementController == null)
+                movementController = GetComponent<StarterAssets.StarterAssetsInputs>();
+            if (movementController == null && thirdPersonController != null)
+                movementController = thirdPersonController;
         }
     }
 
@@ -103,74 +78,81 @@ public class PlayerHealth : MonoBehaviour
         }
         else
         {
-            // 玩家没死，触发受击动画
-            if (animator != null)
+            // ★ 攻击霸体：正在连招时不受击退、不播受击动画
+            bool hasSuperArmor = playerAttack != null && playerAttack.IsAttacking;
+
+            if (!hasSuperArmor && animator != null)
             {
-                Debug.Log("PlayerHealth: 触发 TrigHit 动画触发器");
+                animator.ResetTrigger("Attack1");
+                animator.ResetTrigger("Attack2");
+                animator.ResetTrigger("Attack3");
                 animator.SetTrigger("TrigHit");
+                StartCoroutine(FinishHitAnimation());
             }
 
-            // 防滑步：禁用玩家控制，并在受击动画结束后恢复
-            DisablePlayerControlTemporarily();
+            // 攻击时不锁移动，受击才锁
+            if (!hasSuperArmor)
+                DisablePlayerControlTemporarily();
         }
     }
 
     /// <summary>
     /// 禁用玩家控制（防滑步），并在受击动画结束后恢复
+    /// 优先走 PlayerAttack 的引用计数锁，避免与攻击锁冲突
     /// </summary>
     private void DisablePlayerControlTemporarily()
     {
-        if (playerInputComponent != null)
+        IsInHitStun = true;
+        if (playerAttack != null)
         {
-            Debug.Log($"PlayerHealth: 禁用玩家控制 - {playerInputComponent.GetType().Name}，将在 {hitStunDuration} 秒后恢复");
-            playerInputComponent.enabled = false;
-
-            // 启动协程在受击动画结束后恢复控制
-            StartCoroutine(RestorePlayerControlAfterHit());
+            playerAttack.LockMovement(hitStunDuration);
+            StartCoroutine(EndHitStun(hitStunDuration));
         }
-        else
+        else if (movementController != null)
         {
-            Debug.LogWarning("PlayerHealth: playerInputComponent 为 null，无法禁用玩家控制", this);
+            movementController.enabled = false;
+            StartCoroutine(RestorePlayerControlAfterHit());
         }
     }
 
+    private System.Collections.IEnumerator EndHitStun(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        IsInHitStun = false;
+    }
+
     /// <summary>
-    /// 受击后恢复玩家控制的协程
+    /// 受击动画播完后通过 ResetCombo 回到 Idle（仅当玩家没在连招时）
+    /// </summary>
+    private System.Collections.IEnumerator FinishHitAnimation()
+    {
+        yield return new WaitForSeconds(hitStunDuration);
+        bool isAttacking = playerAttack != null && playerAttack.IsAttacking;
+        if (animator != null && !isDead && !isAttacking)
+            animator.SetTrigger("ResetCombo");
+    }
+
+    /// <summary>
+    /// 受击后恢复玩家控制的协程（仅在无 PlayerAttack 时使用）
     /// </summary>
     private System.Collections.IEnumerator RestorePlayerControlAfterHit()
     {
-        // 等待受击动画时长
         yield return new WaitForSeconds(hitStunDuration);
 
-        // 如果玩家已死亡，不恢复控制
-        if (isDead)
-        {
-            Debug.Log("PlayerHealth: 玩家已死亡，不恢复控制");
-            yield break;
-        }
+        IsInHitStun = false;
+        if (isDead) yield break;
 
-        // 恢复玩家控制
-        if (playerInputComponent != null)
-        {
-            Debug.Log($"PlayerHealth: 恢复玩家控制 - {playerInputComponent.GetType().Name}");
-            playerInputComponent.enabled = true;
-        }
+        if (movementController != null)
+            movementController.enabled = true;
     }
 
     /// <summary>
-    /// 禁用玩家控制（防滑步）
+    /// 禁用玩家控制（死亡时永久禁用）
     /// </summary>
     private void DisablePlayerControl()
     {
-        if (playerInputComponent != null)
-        {
-            Debug.Log($"PlayerHealth: 禁用玩家控制 - {playerInputComponent.GetType().Name}");
-            playerInputComponent.enabled = false;
-        }
-        else
-        {
-            Debug.LogWarning("PlayerHealth: playerInputComponent 为 null，无法禁用玩家控制", this);
-        }
+        if (movementController != null)
+            movementController.enabled = false;
     }
 
     /// <summary>

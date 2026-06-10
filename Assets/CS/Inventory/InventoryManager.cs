@@ -21,7 +21,8 @@ public class InventoryManager : MonoBehaviour, IInventoryService
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AutoCreate()
     {
-        if (_instance != null) return;
+        // 如果场景里已经有了（比如挂在玩家身上），就不自动创建
+        if (FindObjectOfType<InventoryManager>() != null) return;
 
         GameObject go = new GameObject("InventoryManager");
         _instance = go.AddComponent<InventoryManager>();

@@ -28,6 +28,8 @@ public class InventoryItemData : ScriptableObject
     [Header("Weapon")]
     [Tooltip("Only used when ItemCategory = Weapon")]
     public int attackPower;
+    [Tooltip("The 3D model prefab for this weapon, shown on the player's hand.")]
+    public GameObject weaponPrefab;
 
     [Header("Potion")]
     [Tooltip("Only used when ItemCategory = Potion")]

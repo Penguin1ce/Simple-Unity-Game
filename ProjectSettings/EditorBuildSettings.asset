@@ -5,7 +5,19 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
+  - enabled: 1
+    path: Assets/Scenes/Town.unity
+    guid: d3c372afe6b33aa449ff069c1a7e3a91
+  - enabled: 1
+    path: Assets/Scenes/Task1-GrassLand.unity
+    guid: d0bdd8c6a05df1d42ba455613236b65a
+  - enabled: 1
+    path: Assets/Scenes/Task2-LavaCave.unity
+    guid: 161143e768fb6af44ac9ede28c71c5c8
+  - enabled: 1
+    path: Assets/Scenes/Task3-SkullThrone.unity
+    guid: 039ceb8c62fc6d145b9e59bc989ca2de
   m_configObjects: {}

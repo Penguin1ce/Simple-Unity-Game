@@ -30,9 +30,12 @@ public class PlayerManaBar : MonoBehaviour
 
     private void SetBar(float ratio)
     {
+        if (float.IsNaN(ratio) || float.IsInfinity(ratio)) ratio = 0f;
+        ratio = Mathf.Clamp01(ratio);
+
         if (fillImage != null)
         {
-            fillImage.rectTransform.anchorMax = new Vector2(ratio, 1);
+            fillImage.rectTransform.anchorMax = new Vector2(ratio, 1f);
             fillImage.color = Color.Lerp(lowBlue, fullBlue, ratio);
         }
 

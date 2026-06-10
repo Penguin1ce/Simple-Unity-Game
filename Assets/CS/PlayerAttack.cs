@@ -29,6 +29,9 @@ public class PlayerAttack : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
+            // 鼠标解锁时（商店/背包打开中）不攻击
+            if (Cursor.lockState != CursorLockMode.Locked) return;
+
             TryAttack();
         }
     }

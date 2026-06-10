@@ -1,63 +1,62 @@
-using TMPro;
 using UnityEngine;
 
 public class QuestNpcInteraction : MonoBehaviour
 {
-    [SerializeField] private KeyCode interactKey = KeyCode.F;
-    [SerializeField] private GameObject dialoguePanel;
-    [SerializeField] private TMP_Text dialogueText;
+    [SerializeField] private KeyCode interactKey = KeyCode.E;
+    [SerializeField] private float interactDistance = 3f;
+    [SerializeField] private Transform player;
 
-    private bool isPlayerInTrigger;
+    private IMainQuestService QuestService => MainQuestManager.Instance;
 
-    void Update()
+    private void Awake()
     {
-        if (!isPlayerInTrigger || !Input.GetKeyDown(interactKey))
+        if (player == null)
+        {
+            GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+            if (playerObject != null)
+            {
+                player = playerObject.transform;
+            }
+        }
+    }
+
+    private void Update()
+    {
+        if (player == null || QuestService == null)
         {
             return;
         }
 
-        MainQuestManager questManager = MainQuestManager.Instance;
-        if (questManager == null)
+        if (Vector3.Distance(transform.position, player.position) > interactDistance)
         {
             return;
         }
 
-        if (questManager.QuestStage == MainQuestManager.NotAcceptedStage)
+        if (Input.GetKeyDown(interactKey))
         {
-            questManager.AcceptMainQuest();
-            ShowDialogue(questManager.GetNpcDialogueText());
+            Interact();
+        }
+    }
+
+    public void Interact()
+    {
+        IMainQuestService questService = QuestService;
+        if (questService == null)
+        {
             return;
         }
 
-        ShowDialogue(questManager.GetNpcDialogueText());
-    }
+        Debug.Log(questService.GetNpcDialogueText(), this);
 
-    void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag("Player"))
+        if (questService.QuestStage == MainQuestManager.NotAcceptedStage)
         {
-            isPlayerInTrigger = true;
+            questService.AcceptMainQuest();
         }
     }
 
-    void OnTriggerExit(Collider other)
+    private void OnDrawGizmosSelected()
     {
-        if (other.CompareTag("Player"))
-        {
-            isPlayerInTrigger = false;
-        }
-    }
-
-    private void ShowDialogue(string text)
-    {
-        if (dialogueText != null)
-        {
-            dialogueText.text = text;
-        }
-
-        if (dialoguePanel != null)
-        {
-            dialoguePanel.SetActive(true);
-        }
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(transform.position, interactDistance);
     }
 }

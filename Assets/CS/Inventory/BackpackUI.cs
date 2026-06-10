@@ -53,13 +53,7 @@ public class BackpackUI : MonoBehaviour
 
     private void EnsureEventSystem()
     {
-        if (FindObjectOfType<EventSystem>() == null)
-        {
-            GameObject esGo = new GameObject("EventSystem");
-            esGo.AddComponent<EventSystem>();
-            esGo.AddComponent<StandaloneInputModule>();
-            Debug.Log("[BackpackUI] Created EventSystem (missing in scene).");
-        }
+        UIEventSystemHelper.Ensure();
     }
 
     private void EnsureGraphicRaycaster()

@@ -12,6 +12,8 @@ public class EnemyAI : MonoBehaviour
     public int attackDamage = 10;
     [Tooltip("攻击前方角度范围（度），180度为半个球体，90度为正前方扇形")]
     public float attackAngle = 90f;
+    [Tooltip("转向速度，数值越大转向越快")]
+    public float rotationSpeed = 10f;
 
     [Header("References")]
     public NavMeshAgent agent;
@@ -79,6 +81,8 @@ public class EnemyAI : MonoBehaviour
         if (distanceToPlayer <= attackRange)
         {
             StopChase();
+            // 攻击前转向玩家
+            LookAtPlayer();
             TryAttack();
         }
         else
@@ -112,6 +116,23 @@ public class EnemyAI : MonoBehaviour
         if (animator != null)
         {
             animator.SetFloat("Speed", 0f);
+        }
+    }
+
+    /// <summary>
+    /// 转向玩家
+    /// </summary>
+    private void LookAtPlayer()
+    {
+        if (player == null) return;
+
+        Vector3 directionToPlayer = (player.position - transform.position).normalized;
+        directionToPlayer.y = 0; // 保持水平，不上下倾斜
+
+        if (directionToPlayer != Vector3.zero)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(directionToPlayer);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
     }
 

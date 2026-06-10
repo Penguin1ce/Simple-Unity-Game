@@ -3,31 +3,67 @@ using UnityEngine;
 
 public class MainQuestManager : MonoBehaviour, IMainQuestService
 {
-    public static MainQuestManager Instance { get; private set; }
-
-    // 定义任务阶段常量
     public const int NotAcceptedStage = 0;
     public const int KillSlimeStage = 1;
     public const int KillEliteStage = 2;
     public const int KillBossStage = 3;
     public const int CompletedStage = 4;
 
+    private const string QuestStageSaveKey = "MainQuest.Stage";
+
+    public static MainQuestManager Instance { get; private set; }
+
+    [Header("Save Settings")]
+    [SerializeField] private bool loadOnAwake = true;
+    [SerializeField] private bool saveOnStageChanged = true;
+
+    [Header("Debug")]
+    [SerializeField, Range(NotAcceptedStage, CompletedStage)]
     private int questStage = NotAcceptedStage;
+
     public int QuestStage => questStage;
     public bool IsQuestCompleted => questStage >= CompletedStage;
 
-    // 事件：当任务阶段改变时通知 UI
     public event Action<int, string> QuestStageChanged;
 
-    void Awake()
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Bootstrap()
+    {
+        if (Instance != null || FindObjectOfType<MainQuestManager>() != null)
+        {
+            return;
+        }
+
+        new GameObject("MainQuestManager").AddComponent<MainQuestManager>();
+    }
+
+    private void Awake()
     {
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
             return;
         }
+
         Instance = this;
-        DontDestroyOnLoad(gameObject); // 切换场景时不销毁
+
+        if (loadOnAwake)
+        {
+            LoadQuestStage();
+        }
+    }
+
+    private void Start()
+    {
+        NotifyQuestStageChanged();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
     }
 
     public void AcceptMainQuest()
@@ -37,55 +73,48 @@ public class MainQuestManager : MonoBehaviour, IMainQuestService
             return;
         }
 
-        SetQuestStage(KillSlimeStage);
+        SetQuestStage(KillSlimeStage, true);
     }
 
     public void OnEnemyKilled(EnemyType enemyType)
     {
+        int nextStage = questStage;
+
         if (questStage == KillSlimeStage && enemyType == EnemyType.Slime)
         {
-            SetQuestStage(KillEliteStage);
+            nextStage = KillEliteStage;
         }
         else if (questStage == KillEliteStage && enemyType == EnemyType.Elite)
         {
-            SetQuestStage(KillBossStage);
+            nextStage = KillBossStage;
         }
         else if (questStage == KillBossStage && enemyType == EnemyType.Boss)
         {
-            SetQuestStage(CompletedStage);
+            nextStage = CompletedStage;
         }
-    }
 
-    // 新增：调试用，直接设置阶段
-    public void SetQuestStageForDebug(int stage)
-    {
-        SetQuestStage(Mathf.Clamp(stage, NotAcceptedStage, CompletedStage));
-    }
-
-    void OnDestroy()
-    {
-        if (Instance == this)
+        if (nextStage != questStage)
         {
-            Instance = null;
+            SetQuestStage(nextStage, true);
         }
-    }
-
-    private void SetQuestStage(int newStage)
-    {
-        questStage = newStage;
-        QuestStageChanged?.Invoke(newStage, GetCurrentQuestText());
     }
 
     public string GetCurrentQuestText()
     {
         switch (questStage)
         {
-            case NotAcceptedStage: return "与村口 NPC 对话";
-            case KillSlimeStage: return "击败史莱姆";
-            case KillEliteStage: return "击败精英怪";
-            case KillBossStage: return "击败 Boss";
-            case CompletedStage: return "主线任务已完成";
-            default: return "未知任务";
+            case NotAcceptedStage:
+                return "当前任务：与村口 NPC 对话";
+            case KillSlimeStage:
+                return "当前任务：击败史莱姆";
+            case KillEliteStage:
+                return "当前任务：击败精英怪";
+            case KillBossStage:
+                return "当前任务：击败 Boss";
+            case CompletedStage:
+                return "任务完成：村庄危机已解除";
+            default:
+                return "当前任务：与村口 NPC 对话";
         }
     }
 
@@ -93,12 +122,79 @@ public class MainQuestManager : MonoBehaviour, IMainQuestService
     {
         switch (questStage)
         {
-            case NotAcceptedStage: return "勇士，村里的怪物越来越多了，愿意帮忙吗？";
-            case KillSlimeStage: return "先去击败史莱姆，回来后我再告诉你下一步。";
-            case KillEliteStage: return "做得好，接下来请击败精英怪。";
-            case KillBossStage: return "最后的威胁是 Boss，击败它就能结束这场危机。";
-            case CompletedStage: return "谢谢你，主线任务已经完成了。";
-            default: return "我还不清楚现在的任务进度。";
+            case NotAcceptedStage:
+                return "附近出现了很多怪物，请你先去击败史莱姆。";
+            case KillSlimeStage:
+                return "请先去击败史莱姆。";
+            case KillEliteStage:
+                return "史莱姆已经解决了，接下来去击败精英怪。";
+            case KillBossStage:
+                return "最后去击败 Boss，村庄就安全了。";
+            case CompletedStage:
+                return "村庄危机已经解除，谢谢你。";
+            default:
+                return "附近出现了很多怪物，请你先去击败史莱姆。";
         }
+    }
+
+    public void ResetQuest()
+    {
+        SetQuestStage(NotAcceptedStage, true);
+    }
+
+    public void SetQuestStageForDebug(int stage)
+    {
+        SetQuestStage(stage, true);
+    }
+
+    private void SetQuestStage(int stage, bool notify)
+    {
+        int clampedStage = Mathf.Clamp(stage, NotAcceptedStage, CompletedStage);
+        if (questStage == clampedStage)
+        {
+            if (notify)
+            {
+                NotifyQuestStageChanged();
+            }
+
+            return;
+        }
+
+        questStage = clampedStage;
+
+        if (saveOnStageChanged)
+        {
+            SaveQuestStage();
+        }
+
+        if (notify)
+        {
+            NotifyQuestStageChanged();
+        }
+
+        if (questStage == CompletedStage)
+        {
+            Debug.Log(GetCurrentQuestText(), this);
+        }
+    }
+
+    private void NotifyQuestStageChanged()
+    {
+        QuestStageChanged?.Invoke(questStage, GetCurrentQuestText());
+    }
+
+    private void SaveQuestStage()
+    {
+        PlayerPrefs.SetInt(QuestStageSaveKey, questStage);
+        PlayerPrefs.Save();
+    }
+
+    private void LoadQuestStage()
+    {
+        questStage = Mathf.Clamp(
+            PlayerPrefs.GetInt(QuestStageSaveKey, NotAcceptedStage),
+            NotAcceptedStage,
+            CompletedStage
+        );
     }
 }

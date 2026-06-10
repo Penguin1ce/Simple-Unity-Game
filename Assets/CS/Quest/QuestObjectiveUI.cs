@@ -1,68 +1,72 @@
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 
 public class QuestObjectiveUI : MonoBehaviour
 {
-    public TMP_Text questText;
+    [SerializeField] private Text questText;
+    [SerializeField] private TMP_Text questTmpText;
 
-    // 新增：把完成提示面板拖到这里
-    public GameObject completionPanel;
+    private IMainQuestService questService;
 
-    private MainQuestManager boundQuestManager;
-
-    void OnEnable()
+    private void OnEnable()
     {
-        BindQuestManager();
+        BindQuestService();
+        Refresh();
     }
 
-    void Start()
+    private void Start()
     {
-        BindQuestManager();
+        BindQuestService();
+        Refresh();
     }
 
-    void UpdateText(int stage, string message)
+    private void OnDisable()
     {
-        if (questText != null)
+        if (questService != null)
         {
-            questText.text = "当前目标: " + message;
-        }
-
-        // 新增：检测任务是否完成
-        if (completionPanel != null)
-        {
-            completionPanel.SetActive(stage == MainQuestManager.CompletedStage);
+            questService.QuestStageChanged -= HandleQuestStageChanged;
+            questService = null;
         }
     }
 
-    void OnDisable()
+    private void BindQuestService()
     {
-        if (boundQuestManager != null)
-        {
-            boundQuestManager.QuestStageChanged -= UpdateText;
-            boundQuestManager = null;
-        }
-    }
-
-    private void BindQuestManager()
-    {
-        if (questText == null)
-        {
-            questText = GetComponent<TMP_Text>();
-        }
-
-        MainQuestManager questManager = MainQuestManager.Instance;
-        if (questManager == null || boundQuestManager == questManager)
+        IMainQuestService service = MainQuestManager.Instance;
+        if (service == null || questService == service)
         {
             return;
         }
 
-        if (boundQuestManager != null)
+        if (questService != null)
         {
-            boundQuestManager.QuestStageChanged -= UpdateText;
+            questService.QuestStageChanged -= HandleQuestStageChanged;
         }
 
-        boundQuestManager = questManager;
-        boundQuestManager.QuestStageChanged += UpdateText;
-        UpdateText(boundQuestManager.QuestStage, boundQuestManager.GetCurrentQuestText());
+        questService = service;
+        questService.QuestStageChanged += HandleQuestStageChanged;
+    }
+
+    private void HandleQuestStageChanged(int stage, string text)
+    {
+        SetText(text);
+    }
+
+    private void Refresh()
+    {
+        SetText(questService?.GetCurrentQuestText() ?? "当前任务：与村口 NPC 对话");
+    }
+
+    private void SetText(string text)
+    {
+        if (questText != null)
+        {
+            questText.text = text;
+        }
+
+        if (questTmpText != null)
+        {
+            questTmpText.text = text;
+        }
     }
 }

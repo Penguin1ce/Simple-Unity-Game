@@ -31,7 +31,6 @@ public class ShopUI : MonoBehaviour
             InventoryManager.Instance.OnInventoryChanged += RefreshItems;
 
         BuildUI();
-        gameObject.SetActive(false);
         RefreshGold(CurrencyManager.Instance != null ? CurrencyManager.Instance.Gold : 0);
     }
 
@@ -359,15 +358,21 @@ public class ShopUI : MonoBehaviour
         gameObject.SetActive(newState);
         if (newState)
         {
+            ShowCursor();
             EnsureEventSystem();
             RefreshItems();
             RefreshGold(CurrencyManager.Instance != null ? CurrencyManager.Instance.Gold : 0);
+        }
+        else
+        {
+            RestoreCursor();
         }
     }
 
     public void Open()
     {
         gameObject.SetActive(true);
+        ShowCursor();
         EnsureEventSystem();
         RefreshItems();
         RefreshGold(CurrencyManager.Instance != null ? CurrencyManager.Instance.Gold : 0);
@@ -376,16 +381,24 @@ public class ShopUI : MonoBehaviour
     public void Close()
     {
         gameObject.SetActive(false);
+        RestoreCursor();
+    }
+
+    private void ShowCursor()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+
+    private void RestoreCursor()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     private void EnsureEventSystem()
     {
-        if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
-        {
-            GameObject esGo = new GameObject("EventSystem");
-            esGo.AddComponent<UnityEngine.EventSystems.EventSystem>();
-            esGo.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
-        }
+        UIEventSystemHelper.Ensure();
 
         Canvas parentCanvas = GetComponentInParent<Canvas>();
         if (parentCanvas != null && parentCanvas.GetComponent<GraphicRaycaster>() == null)

@@ -18,6 +18,7 @@ public class ShopNpcInteraction : MonoBehaviour
     public Text promptText;
 
     private bool _playerInRange;
+    private bool _initialized;
 
     private void Start()
     {
@@ -25,6 +26,13 @@ public class ShopNpcInteraction : MonoBehaviour
             promptUI.SetActive(false);
 
         EnsureTriggerCollider();
+
+        // 初始关闭商店面板
+        if (shopUI != null)
+        {
+            shopUI.Close();
+            _initialized = true;
+        }
     }
 
     private void EnsureTriggerCollider()
@@ -44,10 +52,21 @@ public class ShopNpcInteraction : MonoBehaviour
 
     private void Update()
     {
+        // 如果 Start 时 shopUI 还没赋值，延迟初始化
+        if (!_initialized && shopUI != null)
+        {
+            shopUI.Close();
+            _initialized = true;
+        }
+
         if (_playerInRange && Input.GetKeyDown(interactKey))
         {
-            if (shopUI != null)
-                shopUI.Toggle();
+            if (shopUI == null)
+            {
+                Debug.LogError("[ShopNpc] shopUI is null! Please assign the ShopCanvas to the Shop UI field in Inspector.");
+                return;
+            }
+            shopUI.Toggle();
         }
     }
 

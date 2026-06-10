@@ -361,6 +361,8 @@ public class BackpackUI : MonoBehaviour
         infoVlg.childAlignment = TextAnchor.MiddleLeft;
         infoVlg.childForceExpandWidth = true;
         infoVlg.childForceExpandHeight = false;
+        LayoutElement infoLe = infoGo.AddComponent<LayoutElement>();
+        infoLe.flexibleWidth = 1;
 
         GameObject nameGo = CreateUIElement("Name", infoGo.transform);
         Text nameText = nameGo.AddComponent<Text>();
@@ -378,9 +380,18 @@ public class BackpackUI : MonoBehaviour
 
         if (def != null && def.itemCategory == ItemCategory.Potion)
         {
+            GameObject spacerGo = CreateUIElement("Spacer", slotGo.transform);
+            LayoutElement spacerLe = spacerGo.AddComponent<LayoutElement>();
+            spacerLe.flexibleWidth = 1;
+
             GameObject btnGo = CreateUIElement("UseBtn", slotGo.transform);
             RectTransform btnRt = btnGo.GetComponent<RectTransform>();
             btnRt.sizeDelta = new Vector2(60, 35);
+            LayoutElement btnLe = btnGo.AddComponent<LayoutElement>();
+            btnLe.preferredWidth = 60;
+            btnLe.minWidth = 60;
+            btnLe.preferredHeight = 35;
+            btnLe.minHeight = 35;
 
             if (useButtonSprite != null)
             {

@@ -13,6 +13,7 @@ public class PlayerAttack : MonoBehaviour
 
     private float lastAttackTime;
     private PlayerHealth playerHealth;
+    private int attackBonus;
 
     private void Awake()
     {
@@ -33,6 +34,19 @@ public class PlayerAttack : MonoBehaviour
 
             TryAttack();
         }
+    }
+
+    public int CurrentDamage => damage + attackBonus;
+
+    public void ApplyTemporaryAttackBoost(int amount, float duration)
+    {
+        if (amount <= 0 || duration <= 0f)
+        {
+            return;
+        }
+
+        attackBonus += amount;
+        StartCoroutine(RemoveAttackBoostAfterDelay(amount, duration));
     }
 
     /// <summary>
@@ -112,8 +126,14 @@ public class PlayerAttack : MonoBehaviour
         // 检查敌人是否仍在攻击范围内
         if (distanceToEnemy <= attackRange)
         {
-            enemyHealth.TakeDamage(damage);
+            enemyHealth.TakeDamage(CurrentDamage);
         }
+    }
+
+    private System.Collections.IEnumerator RemoveAttackBoostAfterDelay(int amount, float duration)
+    {
+        yield return new WaitForSeconds(duration);
+        attackBonus = Mathf.Max(0, attackBonus - amount);
     }
 
     /// <summary>

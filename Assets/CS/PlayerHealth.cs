@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class PlayerHealth : MonoBehaviour
@@ -18,6 +19,11 @@ public class PlayerHealth : MonoBehaviour
     /// </summary>
     public bool IsDead => isDead;
 
+    public event Action<float, float> HealthChanged;
+
+    public float CurrentHealth => currentHealth;
+    public float MaxHealth => maxHealth;
+
     private bool isDead = false;
     private Animator animator;
     private MonoBehaviour playerInputComponent;
@@ -25,7 +31,22 @@ public class PlayerHealth : MonoBehaviour
 
     private void Awake()
     {
-        currentHealth = maxHealth;
+        if (currentHealth <= 0f || currentHealth > maxHealth)
+        {
+            currentHealth = maxHealth;
+        }
+        else
+        {
+            currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
+        }
+
+        NotifyHealthChanged();
+    }
+
+    private void OnValidate()
+    {
+        maxHealth = Mathf.Max(1f, maxHealth);
+        currentHealth = Mathf.Clamp(currentHealth <= 0f ? maxHealth : currentHealth, 0f, maxHealth);
     }
 
     private void Start()
@@ -45,7 +66,7 @@ public class PlayerHealth : MonoBehaviour
 
         if (animator == null)
         {
-            Debug.LogError("PlayerHealth: Animator component not found!", this);
+            Debug.LogWarning("PlayerHealth: Animator component not found (Cube player is fine)", this);
         }
         else
         {
@@ -71,6 +92,7 @@ public class PlayerHealth : MonoBehaviour
             var components = GetComponents<MonoBehaviour>();
             foreach (var comp in components)
             {
+                if (comp == null) continue;
                 var typeName = comp.GetType().Name;
                 if (typeName.Contains("ThirdPersonController"))
                 {
@@ -95,7 +117,8 @@ public class PlayerHealth : MonoBehaviour
     {
         if (isDead) return;
 
-        currentHealth -= damage;
+        currentHealth = Mathf.Max(0f, currentHealth - damage);
+        NotifyHealthChanged();
 
         if (currentHealth <= 0)
         {
@@ -113,6 +136,21 @@ public class PlayerHealth : MonoBehaviour
             // 防滑步：禁用玩家控制，并在受击动画结束后恢复
             DisablePlayerControlTemporarily();
         }
+    }
+
+    /// <summary>
+    /// 回复生命值
+    /// </summary>
+    /// <param name="amount">回复量</param>
+    public void Heal(float amount)
+    {
+        if (isDead || amount <= 0f)
+        {
+            return;
+        }
+
+        currentHealth = Mathf.Min(maxHealth, currentHealth + amount);
+        NotifyHealthChanged();
     }
 
     /// <summary>
@@ -180,6 +218,7 @@ public class PlayerHealth : MonoBehaviour
     {
         isDead = true;
         currentHealth = 0;
+        NotifyHealthChanged();
 
         // 打印日志
         Debug.Log("玩家死亡");
@@ -214,6 +253,14 @@ public class PlayerHealth : MonoBehaviour
 
         // 步骤3：1.5秒内缩小角色并输出游戏结束
         StartCoroutine(ShrinkAndGameOver());
+    }
+
+    private void NotifyHealthChanged()
+    {
+        if (HealthChanged != null)
+        {
+            HealthChanged(currentHealth, maxHealth);
+        }
     }
 
     /// <summary>

@@ -63,7 +63,7 @@ public class QuestDebugTester : MonoBehaviour
         curY += 8;
         if (GUI.Button(new Rect(pad, curY, innerW, btnH), "Reset Quest"))
         {
-            MainQuestManager.Instance.ResetQuest();
+            MainQuestManager.Instance.SetQuestStageForDebug(MainQuestManager.NotAcceptedStage);
         }
 
         GUI.EndGroup();

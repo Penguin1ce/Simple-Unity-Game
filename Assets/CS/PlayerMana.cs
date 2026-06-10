@@ -14,8 +14,8 @@ public class PlayerMana : MonoBehaviour
 
     private void Awake()
     {
-        if (currentMana <= 0f)
-            currentMana = maxMana;
+        maxMana = Mathf.Max(1f, maxMana);
+        currentMana = Mathf.Clamp(currentMana <= 0f ? maxMana : currentMana, 0f, maxMana);
         NotifyManaChanged();
     }
 

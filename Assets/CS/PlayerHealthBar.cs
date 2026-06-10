@@ -33,16 +33,17 @@ public class PlayerHealthBar : MonoBehaviour
 
     private void Update()
     {
-        _displayedRatio = Mathf.Lerp(_displayedRatio, _displayedRatio, 0.1f);
+        if (fillImage == null) return;
+
+        float currentRatio = fillImage.rectTransform.anchorMax.x;
+        float newRatio = Mathf.Lerp(currentRatio, _displayedRatio, 0.1f);
+        fillImage.rectTransform.anchorMax = new Vector2(newRatio, 1f);
+        fillImage.color = Color.Lerp(red, Color.Lerp(yellow, green, newRatio * 2f - 0.5f), Mathf.Clamp01(newRatio * 3f));
     }
 
     private void SetBar(float ratio)
     {
-        if (fillImage != null)
-        {
-            fillImage.rectTransform.anchorMax = new Vector2(ratio, 1);
-            fillImage.color = Color.Lerp(red, Color.Lerp(yellow, green, ratio * 2f - 0.5f), Mathf.Clamp01(ratio * 3f));
-        }
+        _displayedRatio = Mathf.Clamp01(ratio);
 
         if (hpText != null && playerHealth != null)
             hpText.text = string.Format("{0} / {1}",
